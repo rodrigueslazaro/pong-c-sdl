@@ -3,6 +3,7 @@
 #include "./constants.h"
 
 int game_is_running = FALSE;
+float ball_multiplier = 1;
 int last_frame_time = 0;
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -18,6 +19,15 @@ struct rectangle {
     float w;
     float h;
 } p1body, p2body;
+
+struct ball {
+    float x;
+    float y;
+    float w;
+    float h;
+    float xspeed;
+    float yspeed;
+} ball;
 
 int initialize_window(void) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
@@ -95,6 +105,27 @@ void process_input() {
     }
 }
 
+int check_collision() {
+    // xpos + width 
+    if (ball.x+ball.w >= p2body.x && ball.y >= p2body.y && ball.y <= p2body.y+p2body.h){
+        ball.xspeed *= -1;
+        return TRUE;
+    }
+    if (ball.x <= p1body.x+p1body.w && ball.y >= p1body.y && ball.y <= p1body.y+p1body.h) {
+        ball.xspeed *= -1;
+        return TRUE;
+    }
+    if (ball.y+ball.h >= WINDOW_HEIGHT) {
+        ball.yspeed *= -1;
+        return TRUE;
+    }
+    if (ball.y <= 0) {
+        ball.yspeed *= -1;
+        return TRUE;
+    }
+    return FALSE;
+}
+
 void update() {
     // logic to keep a fixed timestamp
     // must waste some time until we reach the target time
@@ -106,13 +137,18 @@ void update() {
     last_frame_time = SDL_GetTicks(); // time since game began
 
     if (p1move.up)
-        p1body.y -= 100 * delta_time;
+        p1body.y -= 200 * delta_time;
     if (p1move.down)
-        p1body.y += 100 * delta_time;
+        p1body.y += 200 * delta_time;
     if (p2move.up)
-        p2body.y -= 100 * delta_time;
+        p2body.y -= 200 * delta_time;
     if (p2move.down)
-        p2body.y += 100 * delta_time;
+        p2body.y += 200 * delta_time;
+
+    if (check_collision())
+        ball_multiplier += 0.0625;
+    ball.x += ball.xspeed * ball_multiplier * delta_time;
+    ball.y += ball.yspeed * ball_multiplier * delta_time;
 }
 
 void setup() {
@@ -121,13 +157,19 @@ void setup() {
     p1body.w = 30;
     p1body.h = 100;
     p2body.x = 750;
-    p2body.y = 20;
+    p2body.y = 400;
     p2body.w = 30;
     p2body.h = 100;
     p1move.up = FALSE;
     p1move.down = FALSE;
     p2move.up = FALSE;
     p2move.down = FALSE;
+    ball.x = WINDOW_WIDTH/2;
+    ball.y = WINDOW_HEIGHT/2;
+    ball.w = 30;
+    ball.h = 30;
+    ball.xspeed = 200;
+    ball.yspeed = 100;
 }
 
 void render() {
@@ -148,9 +190,18 @@ void render() {
         (int)p2body.h
     };
 
+    SDL_Rect ballrender = {
+        (int)ball.x,
+        (int)ball.y,
+        (int)ball.w,
+        (int)ball.h
+    };
+
     SDL_SetRenderDrawColor(renderer, 150, 20, 20, 255);
     SDL_RenderFillRect(renderer, &p1render);
     SDL_RenderFillRect(renderer, &p2render);
+    SDL_SetRenderDrawColor(renderer, 20, 20, 150, 255);
+    SDL_RenderFillRect(renderer, &ballrender);
 
     SDL_RenderPresent(renderer); // swaps back buffer with front buffer
 }
